@@ -95,7 +95,7 @@ gulp.task('server', (done) => {
 
 // dev build runner
 gulp.task('watch-templates', () => buildTemplates(watch(config.get('templateGlob'))))
-gulp.task('watch-styles', () => buildTemplates(watch(config.get('templateGlob'))))
+gulp.task('watch-styles', () => buildStyles(watch(config.get('styleGlob'))))
 gulp.task('watch', ['watch-templates', 'watch-styles'])
 
 // development start script
