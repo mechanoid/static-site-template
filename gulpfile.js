@@ -41,19 +41,11 @@ const buildStyles = (stream) => {
 }
 
 const buildTemplates = (stream) => {
-  let s = stream
+  return stream
   .pipe(plumber())
   .pipe(print((file) => `${file} changed, building templates`))
-  .pipe(pug({ basedir: core.templatePath, pretty: true }))
-
-  if (revisionFiles()) {
-    const manifest = gulp.src(`${config.get('styleBuildPath')}/rev-manifest.json`)
-    s = s
-    .pipe(revReplace({manifest: manifest}))
-    .pipe(print((file) => `${file} replacing revision references`))
-  }
-
-  return s.pipe(gulp.dest(config.get('templateDistPath')))
+  .pipe(pug({ pretty: true }))
+  .pipe(gulp.dest(config.get('templateDistPath')))
 }
 
 gulp.task('clean-styles', () => del(config.get('styleDistPath')))
@@ -62,8 +54,8 @@ gulp.task('styles', ['clean-styles'], () => buildStyles(gulp.src(config.get('sty
 gulp.task('clean-templates', () => del([`!${config.get('templateDistPath')}`, config.get('templateDistGlob')]))
 gulp.task('templates', ['clean-templates'], () => buildTemplates(gulp.src(config.get('templateGlob'))))
 
-gulp.task('prod-templates', () =>
-  buildTemplates(gulp.src(config.get('templateGlob'))))
+// gulp.task('prod-templates', () =>
+//   buildTemplates(gulp.src(config.get('templateGlob'))))
 
 gulp.task('prod-assets', ['styles'], function () {
   return gulp.src([config.get('styleDistGlob')], { base: config.get('distPath') })
@@ -72,6 +64,19 @@ gulp.task('prod-assets', ['styles'], function () {
   .pipe(gulp.dest(config.get('buildPath')))  // write rev'd assets to build dir
   .pipe(rev.manifest())
   .pipe(gulp.dest(config.get('styleBuildPath'))) // write manifest to build dir
+})
+
+gulp.task('prod-templates', ['templates'], () => {
+  let s = gulp.src(config.get('templateDistGlob'))
+
+  if (revisionFiles()) {
+    const manifest = gulp.src(`${config.get('styleBuildPath')}/rev-manifest.json`)
+    s = s
+    .pipe(revReplace({manifest: manifest}))
+    .pipe(print((file) => `${file} replacing revision references`))
+  }
+
+  return s.pipe(gulp.dest(config.get('templateBuildPath')))
 })
 
 // local dev server
@@ -99,8 +104,8 @@ gulp.task('run', ['server', 'watch'])
 gulp.task('dev-build', ['templates', 'styles'])
 
 gulp.task('build', ['dev-build'], () => {
-  gulp.src(config.get('distGlob'))
-  .pipe(config.get('buildPath'))
+  gulp.src(config.get('templateGlob'))
+  .pipe(gulp.dest(config.get('buildPath')))
 })
 
 gulp.task('prod-mode', (cb) => {
@@ -113,13 +118,10 @@ gulp.task('dev-mode', (cb) => {
   cb()
 })
 
-gulp.task('collect-release', () =>
-  gulp.src(config.get('distGlob')).pipe(gulp.dest(config.get('buildPath'))))
-
 gulp.task('clean-build', () => del(config.get('buildPath')))
 
 gulp.task('prod-build', (cb) => {
-  sequence('clean-build', 'prod-mode', 'prod-assets', 'prod-templates', 'collect-release', 'dev-mode')(cb)
+  sequence('clean-build', 'prod-mode', 'prod-assets', 'prod-templates', 'dev-mode')(cb)
 })
 
 gulp.task('deploy', ['prod-build'], () => {
